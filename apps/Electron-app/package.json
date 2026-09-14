@@ -1,0 +1,16 @@
+{
+  "name": "books-electron-app",
+  "version": "1.0.0",
+  "description": "Aplicacion de escritorio Electron que consume un microservicio de libros expuesto en formato XML",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "postinstall": "echo Dependencias instaladas correctamente"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^44.3.0"
+  }
+}

@@ -30,6 +30,7 @@ class Settings:
     flask_host: str
     flask_port: int
     flask_debug: bool
+    uploads_libros_dir: str | None
 
 
 def get_settings() -> Settings:
@@ -51,4 +52,10 @@ def get_settings() -> Settings:
         flask_port=flask_port,
         flask_debug=os.getenv("FLASK_DEBUG", "false").lower()
         in {"1", "true", "yes", "on"},
+        # Optional: absolute path to the directory that physically holds the
+        # book cover images referenced by imagenes_libro.url (e.g. the value
+        # "/uploads/libros/foo.jpg" is served from
+        # "<uploads_libros_dir>/foo.jpg"). Not required: when unset, app.py
+        # falls back to "<library_soap_service>/uploads/libros".
+        uploads_libros_dir=os.getenv("UPLOADS_LIBROS_DIR") or None,
     )

@@ -109,7 +109,10 @@ def cloud_concepts_to_xml(rows: list[dict[str, Any]]) -> bytes:
 def _book_with_images_to_dict(book: dict[str, Any]) -> dict[str, Any]:
     return {
         "isbn": book["isbn"],
-        "title": book["titulo"],
+        "titulo": book["titulo"],
+        "autores": list(book["autores"]),
+        "anio_publicacion": book["anio_publicacion"],
+        "precio": str(book["precio"]),
         "images": [
             {
                 "url": image["url"],
@@ -132,7 +135,14 @@ def books_with_images_to_xml(books: list[dict[str, Any]]) -> bytes:
     for book in books:
         book_element = ET.SubElement(root, "book")
         _text(book_element, "isbn", book["isbn"])
-        _text(book_element, "title", book["titulo"])
+        _text(book_element, "titulo", book["titulo"])
+
+        autores_element = ET.SubElement(book_element, "autores")
+        for autor in book["autores"]:
+            _text(autores_element, "autor", autor)
+
+        _text(book_element, "anio_publicacion", book["anio_publicacion"])
+        _text(book_element, "precio", book["precio"])
 
         images_element = ET.SubElement(book_element, "images")
         for image in book["images"]:

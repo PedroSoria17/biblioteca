@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 from flask import Flask, Response, request, send_from_directory
@@ -15,6 +16,7 @@ from soap.service import dispatch
 
 BASE_DIR = Path(__file__).resolve().parent
 WSDL_DIR = BASE_DIR / "wsdl"
+DEFAULT_UPLOADS_LIBROS_DIR = BASE_DIR / "uploads" / "libros"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,7 +36,13 @@ def xml_response(payload: bytes, status: int = 200) -> Response:
 
 def create_app() -> Flask:
     # Fail fast when required environment variables are missing.
-    get_settings()
+    settings = get_settings()
+
+    uploads_libros_dir = (
+        Path(settings.uploads_libros_dir).resolve()
+        if settings.uploads_libros_dir
+        else DEFAULT_UPLOADS_LIBROS_DIR
+    )
 
     app = Flask(__name__)
 
@@ -67,6 +75,18 @@ def create_app() -> Flask:
             "library-classifier.xsd",
             mimetype="application/xml",
         )
+
+    @app.get("/uploads/libros/<path:filename>")
+    def uploads_libros(filename: str):
+        # imagenes_libro.url stores paths like "/uploads/libros/foo.jpg".
+        # os.path.basename() strips any directory component (including
+        # "../") before it ever reaches the filesystem, and
+        # send_from_directory() independently refuses (404) to resolve
+        # outside uploads_libros_dir even if that were bypassed. Together
+        # this mirrors the same safe-join pattern already used by the
+        # Node.js monolith (apps/web-monolito01/.../lib/uploadsFs.js).
+        safe_filename = os.path.basename(filename)
+        return send_from_directory(uploads_libros_dir, safe_filename)
 
     # ------------------------------------------------------------------
     # REST catalog endpoints (01_prompt_bilingue.md): bilingual XML/JSON,

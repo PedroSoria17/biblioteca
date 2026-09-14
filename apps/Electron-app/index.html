@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' http: https: data:; style-src 'self' 'unsafe-inline'; script-src 'self';" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Catálogo de Libros</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-bar">
+    <div class="app-bar__title">
+      <svg class="app-bar__icon" viewBox="0 0 24 24" width="26" height="26" fill="currentColor">
+        <path d="M18 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm0 18H6V4h2v14l4-2 4 2V4h2v16z"/>
+      </svg>
+      <span>Catálogo de Libros</span>
+    </div>
+    <div class="app-bar__actions">
+      <button id="refresh-btn" class="icon-btn" title="Actualizar" aria-label="Actualizar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M17.65 6.35A7.958 7.958 0 0 0 12 4a8 8 0 1 0 7.73 10h-2.08A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4z"/>
+        </svg>
+      </button>
+      <button id="settings-btn" class="icon-btn" title="Configuración" aria-label="Configuración">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+          <path d="M19.14 12.94a7.14 7.14 0 0 0 .06-.94 7.14 7.14 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.59.24-1.13.56-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.71 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.14.24.42.32.6.22l2.39-.96c.5.38 1.04.7 1.63.94l.36 2.54c.05.24.26.42.5.42h3.84c.24 0 .45-.18.5-.42l.36-2.54c.59-.24 1.13-.56 1.63-.94l2.39.96c.24.1.46.02.6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="content">
+    <div id="status-banner" class="status-banner" hidden></div>
+
+    <div id="loading" class="loading" hidden>
+      <div class="spinner"></div>
+      <p>Cargando libros...</p>
+    </div>
+
+    <section id="cards-grid" class="cards-grid" aria-live="polite"></section>
+
+    <nav id="pagination" class="pagination" hidden>
+      <button id="prev-page" class="pagination__btn" aria-label="Página anterior">&larr; Anterior</button>
+      <span id="page-info" class="pagination__info"></span>
+      <button id="next-page" class="pagination__btn" aria-label="Página siguiente">Siguiente &rarr;</button>
+    </nav>
+  </main>
+
+  <div id="settings-overlay" class="overlay" hidden>
+    <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <h2 id="settings-title">Configuración del microservicio</h2>
+      <form id="settings-form">
+        <label class="field">
+          <span>IP / Host del microservicio</span>
+          <input type="text" id="input-ip" placeholder="Ej: 34.51.73.237:5001" required />
+        </label>
+        <label class="field">
+          <span>Endpoint</span>
+          <input type="text" id="input-endpoint" placeholder="Ej: /books-with-images" required />
+        </label>
+        <p class="field-hint">La URL final se construirá como <code>http://IP/endpoint</code>. También puedes indicar un host con esquema, por ejemplo <code>http://34.51.73.237:5001</code>.</p>
+        <div class="dialog__actions">
+          <button type="button" id="cancel-settings" class="btn btn--text">Cancelar</button>
+          <button type="submit" class="btn btn--filled">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>

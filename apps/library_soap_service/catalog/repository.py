@@ -135,40 +135,73 @@ def list_cloud_concepts() -> list[dict[str, Any]]:
 
 
 def list_books_with_images() -> list[dict[str, Any]]:
+    """
+    Datos minimos de cada libro (isbn, titulo, anio_publicacion, precio) mas
+    sus autores reales (libro_autor + autores, respetando libro_autor.orden)
+    y sus imagenes reales (imagenes_libro).
+
+    Se ejecutan tres SELECT independientes (libros; libro_autor+autores;
+    imagenes_libro) en vez de un unico JOIN de tres tablas porque un libro
+    puede tener varios autores Y varias imagenes a la vez: un JOIN directo
+    produciria el producto cartesiano autores x imagenes por libro (filas
+    duplicadas que habria que des-duplicar despues). Construir cada lista
+    (autores, images) desde su propia consulta y combinarlas en Python por
+    isbn evita ese problema por diseno, sin necesitar DISTINCT ni agregacion
+    SQL adicional.
+    """
     with transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT
-                    l.isbn,
-                    l.titulo,
-                    i.url,
-                    i.texto_alternativo,
-                    i.orden,
-                    i.es_portada
-                FROM libros l
-                LEFT JOIN imagenes_libro i ON i.isbn = l.isbn
-                ORDER BY l.isbn, i.orden;
+                SELECT isbn, titulo, anio_publicacion, precio
+                FROM libros
+                ORDER BY isbn;
                 """
             )
-            rows = cur.fetchall()
+            book_rows = cur.fetchall()
 
-    books: dict[str, dict[str, Any]] = {}
-    order: list[str] = []
-
-    for isbn, titulo, url, texto_alternativo, orden, es_portada in rows:
-        if isbn not in books:
-            books[isbn] = {"isbn": isbn, "titulo": titulo, "images": []}
-            order.append(isbn)
-
-        if url is not None:
-            books[isbn]["images"].append(
-                {
-                    "url": url,
-                    "texto_alternativo": texto_alternativo,
-                    "orden": orden,
-                    "es_portada": es_portada,
-                }
+            cur.execute(
+                """
+                SELECT la.isbn, a.nombre, a.apellido
+                FROM libro_autor la
+                JOIN autores a ON a.autor_id = la.autor_id
+                ORDER BY la.isbn, la.orden, a.autor_id;
+                """
             )
+            author_rows = cur.fetchall()
 
-    return [books[isbn] for isbn in order]
+            cur.execute(
+                """
+                SELECT isbn, url, texto_alternativo, orden, es_portada
+                FROM imagenes_libro
+                ORDER BY isbn, orden;
+                """
+            )
+            image_rows = cur.fetchall()
+
+    authors_by_isbn: dict[str, list[str]] = {}
+    for isbn, nombre, apellido in author_rows:
+        authors_by_isbn.setdefault(isbn, []).append(f"{nombre} {apellido}".strip())
+
+    images_by_isbn: dict[str, list[dict[str, Any]]] = {}
+    for isbn, url, texto_alternativo, orden, es_portada in image_rows:
+        images_by_isbn.setdefault(isbn, []).append(
+            {
+                "url": url,
+                "texto_alternativo": texto_alternativo,
+                "orden": orden,
+                "es_portada": es_portada,
+            }
+        )
+
+    return [
+        {
+            "isbn": isbn,
+            "titulo": titulo,
+            "anio_publicacion": anio_publicacion,
+            "precio": precio,
+            "autores": authors_by_isbn.get(isbn, []),
+            "images": images_by_isbn.get(isbn, []),
+        }
+        for isbn, titulo, anio_publicacion, precio in book_rows
+    ]
