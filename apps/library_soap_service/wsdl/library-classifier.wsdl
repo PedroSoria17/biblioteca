@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions
+    xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+    xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:tns="http://udem.edu/iac/library-classifier/v1"
+    targetNamespace="http://udem.edu/iac/library-classifier/v1"
+    name="LibraryClassifierService">
+
+  <!-- =======================================================
+       TIPOS
+       El contrato importa el XSD externo para mantener separados
+       tipos/datos y definición del servicio.
+  ======================================================== -->
+  <wsdl:types>
+    <xs:schema>
+      <xs:import
+          namespace="http://udem.edu/iac/library-classifier/v1"
+          schemaLocation="library-classifier.xsd"/>
+    </xs:schema>
+  </wsdl:types>
+
+  <!-- =======================================================
+       MENSAJES
+  ======================================================== -->
+
+  <wsdl:message name="ObtenerConceptosPendientesInput">
+    <wsdl:part
+        name="parameters"
+        element="tns:ObtenerConceptosPendientesRequest"/>
+  </wsdl:message>
+
+  <wsdl:message name="ObtenerConceptosPendientesOutput">
+    <wsdl:part
+        name="parameters"
+        element="tns:ObtenerConceptosPendientesResponse"/>
+  </wsdl:message>
+
+  <wsdl:message name="RegistrarClasificacionInput">
+    <wsdl:part
+        name="parameters"
+        element="tns:RegistrarClasificacionRequest"/>
+  </wsdl:message>
+
+  <wsdl:message name="RegistrarClasificacionOutput">
+    <wsdl:part
+        name="parameters"
+        element="tns:RegistrarClasificacionResponse"/>
+  </wsdl:message>
+
+  <wsdl:message name="ObtenerProgresoUsuarioInput">
+    <wsdl:part
+        name="parameters"
+        element="tns:ObtenerProgresoUsuarioRequest"/>
+  </wsdl:message>
+
+  <wsdl:message name="ObtenerProgresoUsuarioOutput">
+    <wsdl:part
+        name="parameters"
+        element="tns:ObtenerProgresoUsuarioResponse"/>
+  </wsdl:message>
+
+  <wsdl:message name="ServiceFaultMessage">
+    <wsdl:part
+        name="fault"
+        element="tns:ServiceFault"/>
+  </wsdl:message>
+
+  <!-- =======================================================
+       PORT TYPE / INTERFACE
+  ======================================================== -->
+
+  <wsdl:portType name="LibraryClassifierPortType">
+
+    <wsdl:operation name="ObtenerConceptosPendientes">
+      <wsdl:documentation>
+        Devuelve conceptos del catálogo que todavía no han sido
+        clasificados por el clasificador indicado.
+      </wsdl:documentation>
+      <wsdl:input message="tns:ObtenerConceptosPendientesInput"/>
+      <wsdl:output message="tns:ObtenerConceptosPendientesOutput"/>
+      <wsdl:fault
+          name="ServiceFault"
+          message="tns:ServiceFaultMessage"/>
+    </wsdl:operation>
+
+    <wsdl:operation name="RegistrarClasificacion">
+      <wsdl:documentation>
+        Registra una clasificación Cloud IaaS/PaaS/SaaS/FaaS.
+        Una clasificación duplicada debe convertirse en SOAP Fault.
+      </wsdl:documentation>
+      <wsdl:input message="tns:RegistrarClasificacionInput"/>
+      <wsdl:output message="tns:RegistrarClasificacionOutput"/>
+      <wsdl:fault
+          name="ServiceFault"
+          message="tns:ServiceFaultMessage"/>
+    </wsdl:operation>
+
+    <wsdl:operation name="ObtenerProgresoUsuario">
+      <wsdl:documentation>
+        Devuelve el avance de clasificación asociado al correo
+        del clasificador.
+      </wsdl:documentation>
+      <wsdl:input message="tns:ObtenerProgresoUsuarioInput"/>
+      <wsdl:output message="tns:ObtenerProgresoUsuarioOutput"/>
+      <wsdl:fault
+          name="ServiceFault"
+          message="tns:ServiceFaultMessage"/>
+    </wsdl:operation>
+
+  </wsdl:portType>
+
+  <!-- =======================================================
+       SOAP 1.1 BINDING
+       Document/Literal favorece interoperabilidad y contrato explícito.
+  ======================================================== -->
+
+  <wsdl:binding
+      name="LibraryClassifierSoapBinding"
+      type="tns:LibraryClassifierPortType">
+
+    <soap:binding
+        style="document"
+        transport="http://schemas.xmlsoap.org/soap/http"/>
+
+    <wsdl:operation name="ObtenerConceptosPendientes">
+      <soap:operation
+          soapAction="http://udem.edu/iac/library-classifier/v1/ObtenerConceptosPendientes"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="ServiceFault">
+        <soap:fault name="ServiceFault" use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+    <wsdl:operation name="RegistrarClasificacion">
+      <soap:operation
+          soapAction="http://udem.edu/iac/library-classifier/v1/RegistrarClasificacion"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="ServiceFault">
+        <soap:fault name="ServiceFault" use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+    <wsdl:operation name="ObtenerProgresoUsuario">
+      <soap:operation
+          soapAction="http://udem.edu/iac/library-classifier/v1/ObtenerProgresoUsuario"/>
+      <wsdl:input>
+        <soap:body use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal"/>
+      </wsdl:output>
+      <wsdl:fault name="ServiceFault">
+        <soap:fault name="ServiceFault" use="literal"/>
+      </wsdl:fault>
+    </wsdl:operation>
+
+  </wsdl:binding>
+
+  <!-- =======================================================
+       SERVICE / ENDPOINT
+       La URL se cambiará al dominio final durante despliegue.
+  ======================================================== -->
+
+  <wsdl:service name="LibraryClassifierService">
+    <wsdl:documentation>
+      Servicio SOAP independiente para clasificar conceptos Cloud
+      del catálogo de la librería.
+    </wsdl:documentation>
+
+    <wsdl:port
+        name="LibraryClassifierSoapPort"
+        binding="tns:LibraryClassifierSoapBinding">
+
+      <soap:address location="http://localhost:5000/soap"/>
+
+    </wsdl:port>
+  </wsdl:service>
+
+</wsdl:definitions>

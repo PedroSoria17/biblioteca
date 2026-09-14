@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:tns="http://udem.edu/iac/library-classifier/v1"
+    targetNamespace="http://udem.edu/iac/library-classifier/v1"
+    elementFormDefault="qualified">
+
+  <!-- =======================================================
+       TIPOS SIMPLES
+  ======================================================== -->
+
+  <xs:simpleType name="ModeloCloudType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="IaaS"/>
+      <xs:enumeration value="PaaS"/>
+      <xs:enumeration value="SaaS"/>
+      <xs:enumeration value="FaaS"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="CorreoType">
+    <xs:restriction base="xs:string">
+      <xs:minLength value="3"/>
+      <xs:maxLength value="255"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <!-- =======================================================
+       TIPOS COMPLEJOS REUTILIZABLES
+  ======================================================== -->
+
+  <xs:complexType name="ClasificadorType">
+    <xs:sequence>
+      <xs:element name="nombre" type="xs:string"/>
+      <xs:element name="apellidos" type="xs:string"/>
+      <xs:element name="correo" type="tns:CorreoType"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ClienteType">
+    <xs:sequence>
+      <xs:element name="tipoCliente" type="xs:string"/>
+      <xs:element name="identificador" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ConceptoPendienteType">
+    <xs:sequence>
+      <xs:element name="isbn" type="xs:string"/>
+      <xs:element name="tituloLibro" type="xs:string"/>
+      <xs:element name="categoria" type="xs:string"/>
+      <xs:element name="conceptoId" type="xs:long"/>
+      <xs:element name="concepto" type="xs:string"/>
+      <xs:element name="definicion" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ListaConceptosPendientesType">
+    <xs:sequence>
+      <xs:element
+          name="concepto"
+          type="tns:ConceptoPendienteType"
+          minOccurs="0"
+          maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="ServiceFaultType">
+    <xs:sequence>
+      <xs:element name="codigo" type="xs:string"/>
+      <xs:element name="mensaje" type="xs:string"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- =======================================================
+       OPERACION: ObtenerConceptosPendientes
+  ======================================================== -->
+
+  <xs:element name="ObtenerConceptosPendientesRequest">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="clasificador" type="tns:ClasificadorType"/>
+        <xs:element name="cliente" type="tns:ClienteType"/>
+        <xs:element name="limite" type="xs:positiveInteger" minOccurs="0"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ObtenerConceptosPendientesResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="totalPendientes" type="xs:nonNegativeInteger"/>
+        <xs:element name="conceptos" type="tns:ListaConceptosPendientesType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- =======================================================
+       OPERACION: RegistrarClasificacion
+  ======================================================== -->
+
+  <xs:element name="RegistrarClasificacionRequest">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="clasificador" type="tns:ClasificadorType"/>
+        <xs:element name="cliente" type="tns:ClienteType"/>
+        <xs:element name="isbn" type="xs:string"/>
+        <xs:element name="conceptoId" type="xs:long"/>
+        <xs:element name="modeloCloud" type="tns:ModeloCloudType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="RegistrarClasificacionResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="registrada" type="xs:boolean"/>
+        <xs:element name="mensaje" type="xs:string"/>
+        <xs:element name="fechaClasificacion" type="xs:dateTime"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- =======================================================
+       OPERACION: ObtenerProgresoUsuario
+  ======================================================== -->
+
+  <xs:element name="ObtenerProgresoUsuarioRequest">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="correo" type="tns:CorreoType"/>
+        <xs:element name="cliente" type="tns:ClienteType"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:element name="ObtenerProgresoUsuarioResponse">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="totalCatalogo" type="xs:nonNegativeInteger"/>
+        <xs:element name="totalClasificados" type="xs:nonNegativeInteger"/>
+        <xs:element name="totalPendientes" type="xs:nonNegativeInteger"/>
+        <xs:element name="porcentajeCompletado" type="xs:decimal"/>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <!-- Fault común de negocio/validación -->
+  <xs:element name="ServiceFault" type="tns:ServiceFaultType"/>
+
+</xs:schema>

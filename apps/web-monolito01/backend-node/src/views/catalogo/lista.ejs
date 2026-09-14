@@ -1,0 +1,32 @@
+<%- include('../layout/arriba', { titulo: config.tituloPlural }) %>
+<main class="contenedor">
+  <div class="cabecera-seccion">
+    <h1><%= config.tituloPlural %></h1>
+    <a class="boton" href="/<%= config.rutaBase %>/nuevo">+ Nuevo <%= config.tituloSingular %></a>
+  </div>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <% config.campos.forEach(campo => { %><th><%= campo.etiqueta %></th><% }) %>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% items.forEach(item => { %>
+      <tr>
+        <% config.campos.forEach(campo => { %><td><%= item[campo.nombre] || '—' %></td><% }) %>
+        <td class="acciones">
+          <a href="/<%= config.rutaBase %>/<%= item[config.idColumna] %>/editar">Editar</a>
+          <form method="POST" action="/<%= config.rutaBase %>/<%= item[config.idColumna] %>/eliminar" class="inline">
+            <button type="submit" class="enlace-peligro">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (items.length === 0) { %>
+      <tr><td colspan="<%= config.campos.length + 1 %>">Sin registros.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</main>
+<%- include('../layout/abajo') %>

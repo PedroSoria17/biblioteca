@@ -1,0 +1,24 @@
+<%- include('../layout/arriba', { titulo: 'Crear cuenta' }) %>
+<main class="contenedor angosto">
+  <h1>Crear cuenta</h1>
+  <% if (errores && errores.length) { %>
+    <ul class="lista-errores"><% errores.forEach(e => { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="POST" action="/registro" class="formulario">
+    <label>Nombre completo
+      <input type="text" name="nombreCompleto" value="<%= valores.nombreCompleto || '' %>" required />
+    </label>
+    <label>Correo electrónico
+      <input type="email" name="email" value="<%= valores.email || '' %>" required />
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" minlength="8" required />
+    </label>
+    <label>Confirmar contraseña
+      <input type="password" name="passwordConfirmar" minlength="8" required />
+    </label>
+    <button type="submit" class="boton">Crear cuenta</button>
+  </form>
+  <p>¿Ya tienes cuenta? <a href="/login">Inicia sesión</a>.</p>
+</main>
+<%- include('../layout/abajo') %>

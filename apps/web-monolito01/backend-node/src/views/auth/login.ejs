@@ -1,0 +1,18 @@
+<%- include('../layout/arriba', { titulo: 'Iniciar sesión' }) %>
+<main class="contenedor angosto">
+  <h1>Iniciar sesión</h1>
+  <% if (errores && errores.length) { %>
+    <ul class="lista-errores"><% errores.forEach(e => { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="POST" action="/login" class="formulario">
+    <label>Correo electrónico
+      <input type="email" name="email" value="<%= valores.email || '' %>" required />
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" required />
+    </label>
+    <button type="submit" class="boton">Entrar</button>
+  </form>
+  <p>¿No tienes cuenta? <a href="/registro">Regístrate aquí</a>.</p>
+</main>
+<%- include('../layout/abajo') %>

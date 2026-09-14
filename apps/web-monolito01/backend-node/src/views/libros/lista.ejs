@@ -1,0 +1,27 @@
+<%- include('../layout/arriba', { titulo: 'Catálogo' }) %>
+<main class="contenedor">
+  <div class="cabecera-seccion">
+    <h1>Catálogo de libros</h1>
+    <% if (usuarioActual && usuarioActual.es_administrador) { %>
+      <a class="boton" href="/libros/nuevo">+ Nuevo libro</a>
+    <% } %>
+  </div>
+  <form method="GET" action="/libros" class="formulario-busqueda">
+    <input type="text" name="q" placeholder="Buscar por ISBN o título..." value="<%= busqueda %>" />
+    <button type="submit" class="boton secundario">Buscar</button>
+  </form>
+  <div class="rejilla-libros">
+    <% libros.forEach(libro => { %>
+      <a class="tarjeta-libro" href="/libros/<%= encodeURIComponent(libro.isbn) %>">
+        <h3><%= libro.titulo %></h3>
+        <p><%= libro.anio_publicacion %> · <%= libro.formato %> · <%= libro.categoria %></p>
+        <p class="precio">$<%= Number(libro.precio).toFixed(2) %></p>
+        <p class="<%= libro.stock > 0 ? 'en-stock' : 'sin-stock' %>">
+          <%= libro.stock > 0 ? `${libro.stock} en stock` : 'Sin stock' %>
+        </p>
+      </a>
+    <% }) %>
+    <% if (libros.length === 0) { %><p>No se encontraron libros.</p><% } %>
+  </div>
+</main>
+<%- include('../layout/abajo') %>

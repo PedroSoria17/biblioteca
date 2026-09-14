@@ -1,0 +1,20 @@
+<%- include('../layout/arriba', { titulo: item ? `Editar ${config.tituloSingular}` : `Nuevo ${config.tituloSingular}` }) %>
+<main class="contenedor angosto">
+  <h1><%= item ? `Editar ${config.tituloSingular}` : `Nuevo ${config.tituloSingular}` %></h1>
+  <% if (errores && errores.length) { %>
+    <ul class="lista-errores"><% errores.forEach(e => { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="POST" action="<%= item && item[config.idColumna] ? `/${config.rutaBase}/${item[config.idColumna]}/editar` : `/${config.rutaBase}` %>" class="formulario">
+    <% config.campos.forEach(campo => { %>
+      <label>
+        <%= campo.etiqueta %><% if (campo.requerido) { %> *<% } %>
+        <input type="text" name="<%= campo.nombre %>" value="<%= (item && item[campo.nombre]) || '' %>" <%= campo.requerido ? 'required' : '' %> />
+      </label>
+    <% }) %>
+    <div class="acciones-formulario">
+      <button type="submit" class="boton">Guardar</button>
+      <a href="/<%= config.rutaBase %>" class="boton secundario">Cancelar</a>
+    </div>
+  </form>
+</main>
+<%- include('../layout/abajo') %>

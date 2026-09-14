@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" role="img" aria-label="Portada no disponible">
+  <rect width="240" height="320" fill="#e9ecef"/>
+  <rect x="16" y="16" width="208" height="288" fill="none" stroke="#adb5bd" stroke-width="2"/>
+  <path d="M70 70h100a10 10 0 0 1 10 10v150a10 10 0 0 1-10 10H70a10 10 0 0 1-10-10V80a10 10 0 0 1 10-10z"
+        fill="#f8f9fa" stroke="#adb5bd" stroke-width="3"/>
+  <line x1="90" y1="100" x2="180" y2="100" stroke="#adb5bd" stroke-width="3"/>
+  <line x1="90" y1="120" x2="180" y2="120" stroke="#adb5bd" stroke-width="3"/>
+  <line x1="90" y1="140" x2="150" y2="140" stroke="#adb5bd" stroke-width="3"/>
+  <text x="120" y="250" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#868e96">Book Cover</text>
+</svg>

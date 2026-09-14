@@ -1,0 +1,31 @@
+<%- include('../layout/arriba', { titulo: 'Mi perfil' }) %>
+<main class="contenedor angosto">
+  <h1>Mi perfil</h1>
+  <% if (errores && errores.length) { %>
+    <ul class="lista-errores"><% errores.forEach(e => { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="POST" action="/usuarios/perfil" class="formulario">
+    <label>Nombre completo
+      <input type="text" name="nombreCompleto" value="<%= usuario.nombre_completo %>" required />
+    </label>
+    <label>Correo electrónico
+      <input type="email" name="email" value="<%= usuario.email %>" required />
+    </label>
+    <button type="submit" class="boton">Guardar cambios</button>
+  </form>
+
+  <h2>Cambiar contraseña</h2>
+  <form method="POST" action="/usuarios/perfil/password" class="formulario">
+    <label>Contraseña actual
+      <input type="password" name="passwordActual" required />
+    </label>
+    <label>Contraseña nueva
+      <input type="password" name="passwordNueva" required minlength="8" />
+    </label>
+    <label>Confirmar contraseña nueva
+      <input type="password" name="passwordConfirmar" required minlength="8" />
+    </label>
+    <button type="submit" class="boton">Actualizar contraseña</button>
+  </form>
+</main>
+<%- include('../layout/abajo') %>

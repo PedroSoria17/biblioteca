@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= typeof titulo !== 'undefined' && titulo ? titulo + ' · Librería en línea' : 'Librería en línea' %></title>
+  <link rel="stylesheet" href="/css/estilos.css" />
+</head>
+<body>
+  <header class="cabecera">
+    <div class="contenedor cabecera-interior">
+      <a class="marca" href="/libros">📚 Librería en línea</a>
+      <nav class="navegacion">
+        <a href="/libros">Catálogo</a>
+        <% if (usuarioActual) { %>
+          <% if (usuarioActual.es_administrador) { %>
+            <a href="/usuarios">Usuarios</a>
+            <a href="/autores">Autores</a>
+            <a href="/generos">Géneros</a>
+            <a href="/categorias">Categorías</a>
+            <a href="/formatos">Formatos</a>
+            <a href="/conceptos">Conceptos</a>
+          <% } %>
+          <a href="/usuarios/perfil">Mi perfil (<%= usuarioActual.nombre_completo %>)</a>
+          <form method="POST" action="/logout" class="en-linea">
+            <button type="submit" class="enlace-boton">Cerrar sesión</button>
+          </form>
+        <% } else { %>
+          <a href="/login">Iniciar sesión</a>
+          <a href="/registro">Registrarse</a>
+        <% } %>
+      </nav>
+    </div>
+  </header>
+  <% if (flash) { %>
+    <div class="contenedor">
+      <div class="mensaje mensaje-<%= flash.tipo %>"><%= flash.mensaje %></div>
+    </div>
+  <% } %>

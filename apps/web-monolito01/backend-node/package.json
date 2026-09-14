@@ -1,0 +1,21 @@
+{
+  "name": "libreria-backend-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Aplicacion web monolitica (MVC, renderizado en servidor) para gestionar una libreria en linea. package.json existe unicamente porque npm lo requiere para administrar las dependencias del proyecto; la aplicacion no expone APIs REST/GraphQL/SOAP ni intercambia datos en JSON/XML.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "seed:admin": "node scripts/seed-admin.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "multer": "^2.2.0",
+    "pg": "^8.11.5"
+  }
+}

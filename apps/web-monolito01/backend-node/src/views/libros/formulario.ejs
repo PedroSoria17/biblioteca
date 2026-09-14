@@ -1,0 +1,150 @@
+<%- include('../layout/arriba', { titulo: libro ? 'Editar libro' : 'Nuevo libro' }) %>
+<main class="contenedor">
+  <h1><%= libro ? `Editar: ${libro.titulo}` : 'Nuevo libro' %></h1>
+  <% if (errores && errores.length) { %>
+    <ul class="lista-errores"><% errores.forEach(e => { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="POST" action="<%= libro ? `/libros/${encodeURIComponent(libro.isbn)}/editar` : '/libros' %>" class="formulario">
+    <label>ISBN
+      <input type="text" name="isbn" value="<%= (libro && libro.isbn) || '' %>" <%= libro ? 'readonly' : 'required' %> />
+    </label>
+    <label>Título
+      <input type="text" name="titulo" value="<%= (libro && libro.titulo) || '' %>" required />
+    </label>
+    <label>Año de publicación
+      <input type="number" name="anioPublicacion" value="<%= (libro && libro.anio_publicacion) || '' %>" min="1450" max="2100" required />
+    </label>
+    <label>Precio
+      <input type="number" step="0.01" min="0" name="precio" value="<%= (libro && libro.precio) || '' %>" required />
+    </label>
+    <label>Stock
+      <input type="number" min="0" name="stock" value="<%= libro ? libro.stock : 0 %>" required />
+    </label>
+    <label>Formato
+      <select name="formatoId" required>
+        <option value="">Selecciona...</option>
+        <% formatos.forEach(f => { %>
+          <option value="<%= f.formato_id %>" <%= libro && Number(libro.formato_id) === f.formato_id ? 'selected' : '' %>><%= f.nombre %></option>
+        <% }) %>
+      </select>
+    </label>
+    <label>Categoría
+      <select name="categoriaId" required>
+        <option value="">Selecciona...</option>
+        <% categorias.forEach(c => { %>
+          <option value="<%= c.categoria_id %>" <%= libro && Number(libro.categoria_id) === c.categoria_id ? 'selected' : '' %>><%= c.nombre %></option>
+        <% }) %>
+      </select>
+    </label>
+    <div class="acciones-formulario">
+      <button type="submit" class="boton">Guardar</button>
+      <a href="/libros" class="boton secundario">Cancelar</a>
+    </div>
+  </form>
+
+  <% if (libro) { %>
+    <section class="seccion-asociaciones">
+      <h2>Autores</h2>
+      <ul class="lista-chips">
+        <% autoresLibro.forEach(a => { %>
+          <li>
+            <%= a.nombre %> <%= a.apellido %>
+            <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/autores/<%= a.autor_id %>/eliminar" class="inline">
+              <button type="submit" class="enlace-peligro">Quitar</button>
+            </form>
+          </li>
+        <% }) %>
+        <% if (autoresLibro.length === 0) { %><li class="vacio">Sin autores asignados.</li><% } %>
+      </ul>
+      <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/autores" class="formulario-en-linea">
+        <select name="autorId" required>
+          <option value="">Selecciona un autor...</option>
+          <% todosAutores.forEach(a => { %>
+            <option value="<%= a.autor_id %>"><%= a.nombre %> <%= a.apellido %></option>
+          <% }) %>
+        </select>
+        <input type="number" name="orden" min="1" value="1" title="Orden" />
+        <button type="submit" class="boton secundario">Agregar autor</button>
+      </form>
+
+      <h2>Géneros</h2>
+      <ul class="lista-chips">
+        <% generosLibro.forEach(g => { %>
+          <li>
+            <%= g.nombre %>
+            <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/generos/<%= g.genero_id %>/eliminar" class="inline">
+              <button type="submit" class="enlace-peligro">Quitar</button>
+            </form>
+          </li>
+        <% }) %>
+        <% if (generosLibro.length === 0) { %><li class="vacio">Sin géneros asignados.</li><% } %>
+      </ul>
+      <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/generos" class="formulario-en-linea">
+        <select name="generoId" required>
+          <option value="">Selecciona un género...</option>
+          <% todosGeneros.forEach(g => { %>
+            <option value="<%= g.genero_id %>"><%= g.nombre %></option>
+          <% }) %>
+        </select>
+        <button type="submit" class="boton secundario">Agregar género</button>
+      </form>
+
+      <h2>Conceptos y definiciones</h2>
+      <ul class="lista-conceptos">
+        <% conceptosLibro.forEach(c => { %>
+          <li>
+            <strong><%= c.nombre %>:</strong> <%= c.definicion %>
+            <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/conceptos/<%= c.concepto_id %>/eliminar" class="inline">
+              <button type="submit" class="enlace-peligro">Quitar</button>
+            </form>
+          </li>
+        <% }) %>
+        <% if (conceptosLibro.length === 0) { %><li class="vacio">Sin conceptos definidos.</li><% } %>
+      </ul>
+      <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/conceptos" class="formulario-en-linea">
+        <select name="conceptoId" required>
+          <option value="">Selecciona un concepto...</option>
+          <% todosConceptos.forEach(c => { %>
+            <option value="<%= c.concepto_id %>"><%= c.nombre %></option>
+          <% }) %>
+        </select>
+        <input type="text" name="definicion" placeholder="Definición de este concepto en este libro" required />
+        <button type="submit" class="boton secundario">Agregar concepto</button>
+      </form>
+
+      <h2>Imágenes</h2>
+      <div class="rejilla-imagenes">
+        <% imagenes.forEach(img => { %>
+          <div class="tarjeta-imagen">
+            <img src="<%= img.url %>" alt="<%= img.texto_alternativo || '' %>"
+                 onerror="this.onerror=null;this.src='/images/book-placeholder.svg';" />
+            <% if (img.es_portada) { %><span class="etiqueta">Portada</span><% } %>
+            <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/imagenes/<%= img.imagen_id %>/editar" class="formulario-en-linea">
+              <input type="text" name="textoAlternativo" placeholder="Texto alternativo" value="<%= img.texto_alternativo || '' %>" />
+              <input type="number" name="orden" min="1" value="<%= img.orden %>" title="Orden" />
+              <button type="submit" class="boton secundario">Guardar</button>
+            </form>
+            <div class="acciones-imagen">
+              <% if (!img.es_portada) { %>
+                <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/imagenes/<%= img.imagen_id %>/portada" class="inline">
+                  <button type="submit" class="enlace-boton">Hacer portada</button>
+                </form>
+              <% } %>
+              <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/imagenes/<%= img.imagen_id %>/eliminar" class="inline">
+                <button type="submit" class="enlace-peligro">Eliminar</button>
+              </form>
+            </div>
+          </div>
+        <% }) %>
+        <% if (imagenes.length === 0) { %><p class="vacio">Sin imágenes.</p><% } %>
+      </div>
+      <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/imagenes" enctype="multipart/form-data" class="formulario-en-linea">
+        <input type="file" name="imagen" accept="image/jpeg,image/png,image/webp" required />
+        <input type="text" name="textoAlternativo" placeholder="Texto alternativo" />
+        <label class="linea"><input type="checkbox" name="esPortada" /> Usar como portada</label>
+        <button type="submit" class="boton secundario">Subir imagen</button>
+      </form>
+    </section>
+  <% } %>
+</main>
+<%- include('../layout/abajo') %>

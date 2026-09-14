@@ -1,0 +1,24 @@
+<%- include('../layout/arriba', { titulo: 'Editar usuario' }) %>
+<main class="contenedor angosto">
+  <h1>Editar usuario</h1>
+  <% if (errores && errores.length) { %>
+    <ul class="lista-errores"><% errores.forEach(e => { %><li><%= e %></li><% }) %></ul>
+  <% } %>
+  <form method="POST" action="/usuarios/<%= usuario.usuario_id %>/editar" class="formulario">
+    <label>Nombre completo
+      <input type="text" name="nombreCompleto" value="<%= usuario.nombre_completo %>" required />
+    </label>
+    <label>Correo electrónico
+      <input type="email" name="email" value="<%= usuario.email %>" required />
+    </label>
+    <label class="linea">
+      <input type="checkbox" name="activo" <%= usuario.activo ? 'checked' : '' %> />
+      Cuenta activa
+    </label>
+    <div class="acciones-formulario">
+      <button type="submit" class="boton">Guardar</button>
+      <a href="/usuarios" class="boton secundario">Cancelar</a>
+    </div>
+  </form>
+</main>
+<%- include('../layout/abajo') %>

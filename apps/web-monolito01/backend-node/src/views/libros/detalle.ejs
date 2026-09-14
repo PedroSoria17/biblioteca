@@ -1,0 +1,56 @@
+<%- include('../layout/arriba', { titulo: libro.titulo }) %>
+<main class="contenedor">
+  <a href="/libros" class="enlace-volver">&larr; Volver al catálogo</a>
+  <div class="detalle-libro">
+    <div class="galeria">
+      <% const portada = imagenes.find(i => i.es_portada) || imagenes[0]; %>
+      <% if (portada) { %>
+        <img src="<%= portada.url %>" alt="<%= portada.texto_alternativo || libro.titulo %>" class="imagen-portada"
+             onerror="this.onerror=null;this.src='/images/book-placeholder.svg';" />
+      <% } else { %>
+        <div class="imagen-marcador">Sin imagen</div>
+      <% } %>
+      <% if (imagenes.length > 1) { %>
+      <div class="miniaturas">
+        <% imagenes.forEach(img => { %>
+          <img src="<%= img.url %>" alt="<%= img.texto_alternativo || libro.titulo %>"
+               onerror="this.onerror=null;this.src='/images/book-placeholder.svg';" />
+        <% }) %>
+      </div>
+      <% } %>
+    </div>
+    <div class="informacion">
+      <h1><%= libro.titulo %></h1>
+      <p class="autores"><%= autores.map(a => `${a.nombre} ${a.apellido}`).join(', ') || 'Autor desconocido' %></p>
+      <p class="generos"><% generos.forEach(g => { %><span class="etiqueta"><%= g.nombre %></span><% }) %></p>
+      <p><strong>ISBN:</strong> <%= libro.isbn %></p>
+      <p><strong>Año:</strong> <%= libro.anio_publicacion %></p>
+      <p><strong>Formato:</strong> <%= libro.formato_nombre %></p>
+      <p><strong>Categoría:</strong> <%= libro.categoria_nombre %></p>
+      <p class="precio">$<%= Number(libro.precio).toFixed(2) %></p>
+      <p><%= libro.stock > 0 ? `${libro.stock} unidades en stock` : 'Sin stock disponible' %></p>
+
+      <% if (usuarioActual && usuarioActual.es_administrador) { %>
+        <div class="acciones-formulario">
+          <a class="boton" href="/libros/<%= encodeURIComponent(libro.isbn) %>/editar">Editar</a>
+          <form method="POST" action="/libros/<%= encodeURIComponent(libro.isbn) %>/eliminar" class="inline">
+            <button type="submit" class="enlace-peligro">Eliminar libro</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (conceptos.length) { %>
+    <section class="conceptos">
+      <h2>Conceptos definidos en este libro</h2>
+      <dl>
+        <% conceptos.forEach(c => { %>
+          <dt><%= c.nombre %></dt>
+          <dd><%= c.definicion %></dd>
+        <% }) %>
+      </dl>
+    </section>
+  <% } %>
+</main>
+<%- include('../layout/abajo') %>

@@ -1,0 +1,4 @@
+node_modules/
+.env
+src/public/uploads/libros/*
+!src/public/uploads/libros/.gitkeep

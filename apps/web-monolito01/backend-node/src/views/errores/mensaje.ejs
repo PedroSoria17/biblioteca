@@ -1,0 +1,7 @@
+<%- include('../layout/arriba', { titulo: `Error ${status}` }) %>
+<main class="contenedor angosto">
+  <h1>Error <%= status %></h1>
+  <p><%= mensaje %></p>
+  <a href="/libros" class="boton">Volver al catálogo</a>
+</main>
+<%- include('../layout/abajo') %>

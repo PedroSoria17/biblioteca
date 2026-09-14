@@ -1,0 +1,42 @@
+<%- include('../layout/arriba', { titulo: 'Usuarios registrados' }) %>
+<main class="contenedor">
+  <h1>Usuarios registrados</h1>
+  <table class="tabla">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Correo</th>
+        <th>Administrador</th>
+        <th>Activo</th>
+        <th>Registrado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% usuarios.forEach(u => { %>
+      <tr>
+        <td><%= u.nombre_completo %></td>
+        <td><%= u.email %></td>
+        <td><%= u.es_administrador ? 'Sí' : 'No' %></td>
+        <td><%= u.activo ? 'Sí' : 'No' %></td>
+        <td><%= new Date(u.fecha_registro).toLocaleDateString('es-MX') %></td>
+        <td class="acciones">
+          <a href="/usuarios/<%= u.usuario_id %>/editar">Editar</a>
+          <% if (!u.es_administrador) { %>
+          <form method="POST" action="/usuarios/<%= u.usuario_id %>/promover" class="inline">
+            <button type="submit" class="enlace-boton">Hacer administrador</button>
+          </form>
+          <% } %>
+          <form method="POST" action="/usuarios/<%= u.usuario_id %>/eliminar" class="inline">
+            <button type="submit" class="enlace-peligro">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      <% }) %>
+      <% if (usuarios.length === 0) { %>
+      <tr><td colspan="6">Sin usuarios registrados.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</main>
+<%- include('../layout/abajo') %>
