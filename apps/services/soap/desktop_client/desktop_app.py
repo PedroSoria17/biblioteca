@@ -4,21 +4,34 @@ import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from client_config import load_config
 from soap_client import LibrarySoapClient, SoapFaultError
+from ui.common import UiDispatcher
 
 
-class LibraryClassifierApp(tk.Tk):
-    def __init__(self) -> None:
-        super().__init__()
+class SoapClassifierFrame(ttk.Frame):
+    """
+    The original SOAP classifier (Exercise 03), now a reusable frame: it is a
+    tab of the full desktop client (main.py) and still runs alone through
+    LibraryClassifierApp below. It talks only to POST /soap.
+    """
 
-        self.title("Library Cloud Classifier — SOAP Client")
-        self.geometry("1180x720")
-        self.minsize(980, 620)
+    def __init__(
+        self,
+        parent,
+        endpoint: str | None = None,
+        dispatcher: UiDispatcher | None = None,
+    ) -> None:
+        super().__init__(parent)
+
+        # Worker threads never touch widgets: results go through the
+        # dispatcher, drained by the Tk main loop.
+        self.dispatcher = dispatcher or UiDispatcher(self)
 
         self.pending_by_item: dict[str, dict] = {}
 
         self.endpoint_var = tk.StringVar(
-            value="http://127.0.0.1:5000/soap"
+            value=endpoint or load_config().soap_endpoint
         )
         self.nombre_var = tk.StringVar(value="Pedro")
         self.apellidos_var = tk.StringVar(value="Soria")
@@ -314,25 +327,24 @@ class LibraryClassifierApp(tk.Tk):
         return values
 
     def _run_async(self, action, on_success) -> None:
-        self.config(cursor="watch")
+        self.winfo_toplevel().config(cursor="watch")
 
         def worker():
             try:
                 result = action()
             except Exception as exc:
-                self.after(
-                    0,
-                    lambda: self._show_error(exc),
+                # Bind exc now: Python deletes the name when the except
+                # block ends, so a plain `lambda: ...(exc)` would fail.
+                self.dispatcher.call_soon(
+                    lambda e=exc: self._show_error(e),
                 )
             else:
-                self.after(
-                    0,
-                    lambda: on_success(result),
+                self.dispatcher.call_soon(
+                    lambda r=result: on_success(r),
                 )
             finally:
-                self.after(
-                    0,
-                    lambda: self.config(cursor=""),
+                self.dispatcher.call_soon(
+                    lambda: self.winfo_toplevel().config(cursor=""),
                 )
 
         threading.Thread(
@@ -526,6 +538,19 @@ class LibraryClassifierApp(tk.Tk):
             f'({result["porcentaje"]}%) · '
             f'{result["total_pendientes"]} pending'
         )
+
+
+class LibraryClassifierApp(tk.Tk):
+    """Standalone SOAP classifier window (same behavior as before)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.title("Library Cloud Classifier — SOAP Client")
+        self.geometry("1180x720")
+        self.minsize(980, 620)
+
+        SoapClassifierFrame(self).pack(fill="both", expand=True)
 
 
 if __name__ == "__main__":

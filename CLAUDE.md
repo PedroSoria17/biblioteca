@@ -26,7 +26,7 @@ PostgreSQL, un solo administrador) **siguen vigentes**.
 | `apps/Electron-app/` | Cliente Electron que consume XML de Books | Conservar. |
 | `apps/services/login/` | Microservicio Flask de login (sesión Flask, bcrypt, verificación de correo, XML/JSON) | Se migrará a JWT + Redis en la fase 2. |
 | `apps/services/soap/` | **Microservicio Books** (REST `/books`, `/books/<isbn>`, ... + SOAP `/soap` + WSDL) | Evolucionará con CRUD, JWT y caché Redis. **No** renombrar ni duplicar. |
-| `apps/services/soap/desktop_client/` | App Tkinter actual | Se ampliará después (login, tokens, CRUDs, semáforos). No reescribir aún. |
+| `apps/services/soap/desktop_client/` | Cliente Tkinter de los seis microservicios (`main.py`) + clasificador SOAP original (`desktop_app.py`) | Fase 5. Solo HTTP; nunca PostgreSQL/Redis directo. |
 | `apps/services/shared/` | Paquete `library_shared` (JWT, Redis, autorización, CORS) | Base común para todos los servicios. |
 | `apps/services/users/` | Microservicio Users (puerto 5002): CRUD de `usuarios` con Bearer + ADMIN, `/users/me`, JSON | Fase 4. No emite tokens (eso es Login). |
 | `apps/services/authors/` | Microservicio Authors (puerto 5003): CRUD de `autores` y relaciones `libro_autor`; GET públicos, escrituras Bearer + ADMIN, JSON | Fase 4. Solo lee `libros`; nunca los modifica. |
@@ -158,8 +158,13 @@ técnica y pedir confirmación; nunca hacerlo automáticamente.
      `orders/services/status.py`).
    - Los servicios nuevos no se despliegan uno a uno en la VM: se integran
      todos con Tkinter y se despliegan juntos al final.
-5. **Tkinter**: login, manejo y renovación de tokens, CRUDs, semáforos de
-   disponibilidad.
+5. **Tkinter (hecho)**: `desktop_client/main.py` consume los seis servicios
+   por HTTP (stdlib, sin dependencias): login/refresh/logout con tokens solo
+   en memoria, pestañas por rol, carrito → pedido → pago, aprobación y
+   reembolso ADMIN, semáforos `/health`. Capa `api/` sin Tk (testeable);
+   hilos → `UiDispatcher` → hilo de Tk. `desktop_app.py` (SOAP) sigue
+   funcionando solo y como pestaña. Pruebas: `python -m unittest discover
+   -s tests` desde `desktop_client/`.
 6. **Despliegue CentOS 10**: reverse proxy HTTPS, systemd, variables de
    entorno reales fuera del repositorio.
 
