@@ -2,3 +2,7 @@ Flask>=3.0,<4.0
 psycopg[binary]>=3.1,<4.0
 bcrypt>=4.0,<5.0
 python-dotenv>=1.0,<2.0
+# Shared JWT/Redis/CORS infrastructure (apps/services/shared). Brings PyJWT,
+# redis and flask-cors. The relative path is resolved from the current
+# directory: run `pip install -r requirements.txt` from apps/services/login/.
+-e ../shared

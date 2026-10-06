@@ -38,3 +38,37 @@ def internal_error() -> CatalogError:
         "An internal error occurred while processing the request.",
         500,
     )
+
+
+# --- CRUD (POST/PUT/PATCH/DELETE /books) ------------------------------------
+
+def invalid_input(message: str) -> CatalogError:
+    return CatalogError("INVALID_INPUT", message, 400)
+
+
+def invalid_reference() -> CatalogError:
+    return CatalogError(
+        "INVALID_REFERENCE",
+        "formato_id or categoria_id does not exist",
+        400,
+    )
+
+
+def book_already_exists() -> CatalogError:
+    return CatalogError("BOOK_ALREADY_EXISTS", "A book with this ISBN already exists", 409)
+
+
+def book_has_order_history() -> CatalogError:
+    return CatalogError(
+        "BOOK_HAS_ORDER_HISTORY",
+        "The book is part of the order history and cannot be deleted",
+        409,
+    )
+
+
+def book_in_use() -> CatalogError:
+    return CatalogError(
+        "BOOK_IN_USE",
+        "The book is referenced by other records and cannot be deleted",
+        409,
+    )

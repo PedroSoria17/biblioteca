@@ -88,6 +88,10 @@ library_soap_service/
 
 ## 1. Crear ambiente virtual
 
+`requirements.txt` incluye `-e ../shared` (paquete compartido
+`library_shared`: JWT, Redis, CORS). Es una ruta relativa al directorio
+actual: instalar **desde `apps/services/soap/`**.
+
 ### Windows PowerShell
 
 ```powershell
@@ -122,6 +126,20 @@ PGPASSWORD=<solo-local>
 
 Si PostgreSQL continúa en la VM de GCP y se usa un túnel local, ajusta `PGPORT`
 al puerto local del túnel, por ejemplo `5433`.
+
+Variables obligatorias desde la Fase 3 (Books CRUD + JWT + Redis), con los
+**mismos** `JWT_SECRET_KEY` y `REDIS_URL` que usa Login:
+
+```env
+JWT_SECRET_KEY=<>=32 caracteres, igual en todos los servicios>
+REDIS_URL=redis://:<password>@127.0.0.1:6379/0
+BOOKS_CACHE_TTL_SECONDS=60
+CORS_ALLOWED_ORIGINS=http://localhost:3000
+APP_ENV=development
+```
+
+Sin `JWT_SECRET_KEY` o `REDIS_URL` el servicio no arranca. El puerto sigue
+siendo `FLASK_PORT=5000`.
 
 ## 3. Preparar PostgreSQL
 
@@ -168,15 +186,35 @@ GRANT SELECT ON TABLE public.libro_autor TO library_soap_user;
 Ningún otro privilegio cambia y estos `GRANT` no son destructivos (no
 alteran datos ni estructura).
 
-## 4. Ejecutar pruebas unitarias sin PostgreSQL
-
-Desde la raíz del proyecto:
+**CRUD de Books (Fase 3):** `POST/PUT/PATCH/DELETE /books` escriben
+`public.libros`. Si el servicio usa `library_soap_user`, aplicar una vez
+(aditivo e idempotente):
 
 ```bash
+psql -U <admin> -d <base> -v ON_ERROR_STOP=1 -f sql/03_books_crud_grants.sql
+```
+
+Para `DELETE`, las cascadas (`libro_autor`, `libro_genero`,
+`imagenes_libro`, `libro_concepto` → `soap_module.clasificaciones_cloud`) y la
+restricción de `pedido_detalle` las ejecuta PostgreSQL como dueño de las
+tablas: no requieren más privilegios.
+
+## 4. Ejecutar pruebas unitarias sin PostgreSQL
+
+Desde `apps/services/soap/`. Las pruebas no necesitan PostgreSQL ni Redis
+reales, pero `create_app()` exige las variables de entorno (igual que antes
+exigía las `PG*`); valores ficticios bastan:
+
+```powershell
+$env:PGHOST="127.0.0.1"; $env:PGPORT="59999"; $env:PGDATABASE="x"; $env:PGUSER="x"; $env:PGPASSWORD="x"
+$env:JWT_SECRET_KEY="dummy-secret-for-tests-0123456789abcdef"; $env:REDIS_URL="redis://:x@127.0.0.1:6399/0"
 python -m unittest discover -s tests -v
 ```
 
-Estas pruebas validan el procesamiento manual del SOAP Envelope y los Faults.
+Estas pruebas validan el procesamiento manual del SOAP Envelope y los Faults,
+el catálogo REST y, desde la Fase 3, caché, CRUD, JWT/roles e invalidación
+(`tests/test_books_*.py`, con PostgreSQL y Redis simulados en
+`tests/books_fakes.py`).
 
 ## 5. Ejecutar Flask
 
@@ -511,6 +549,92 @@ esta actividad, ejecuta tú mismo la verificación real de la sección
 `http://34.51.73.237:5001/books-with-images` + `npm start` en
 `apps/Electron-app`), ya que es la única forma de confirmar autores/año/
 precio/imágenes reales end-to-end.
+
+## Books: CRUD, JWT y caché Redis (Fase 3)
+
+Este servicio **es** el microservicio Books (puerto `5000`). SOAP, WSDL y
+los GET existentes no cambian. Toda la seguridad y el acceso a Redis vienen
+de `library_shared` (`apps/services/shared/`).
+
+### Endpoints y permisos
+
+| Método | Endpoint | Acceso | Respuestas |
+| ------ | -------- | ------ | ---------- |
+| GET | `/books` (`?q=` opcional) | público | 200 |
+| GET | `/books/<isbn>` | público | 200, 404 |
+| GET | `/books-with-images`, `/cloud-concepts` | público | sin cambios |
+| GET | `/health` | público | sin cambios (`{"status":"ok","service":...}`) |
+| GET | `/health?details=true` | público | 200 `ok`/`degraded`, 503 `unavailable` |
+| POST | `/books` | Bearer + ADMIN | 201, 400, 401, 403, 409, 503 |
+| PUT | `/books/<isbn>` | Bearer + ADMIN | 200, 400, 401, 403, 404, 503 |
+| PATCH | `/books/<isbn>` | Bearer + ADMIN | 200, 400, 401, 403, 404, 503 |
+| DELETE | `/books/<isbn>` | Bearer + ADMIN | 200, 401, 403, 404, 409, 503 |
+| POST | `/soap`, GET `/wsdl/*` | sin cambios | sin cambios |
+
+- 401: sin token, header malformado, firma/HS256/claims inválidos, expirado,
+  revocado (`jwt:revoked:<jti>`) o refresh token usado como access.
+- 403: token válido sin rol ADMIN (`role_id = 2`).
+- 503 en escrituras: Redis no responde y la revocación no se puede verificar
+  (fail closed). Los GET públicos **no** dependen de Redis.
+- Las respuestas siguen `?format=xml|json` (XML por defecto); los errores,
+  incluidos 401/403, usan el mismo `<error><code/><message/></error>`.
+
+### Campos (tabla `libros`)
+
+| Campo | POST | PUT | PATCH | Regla |
+| ----- | ---- | --- | ----- | ----- |
+| `isbn` | requerido | opcional, igual a la URL | opcional, igual a la URL | ISBN-10/13 (mismo CHECK que la tabla), máx. 20 |
+| `titulo` | requerido | requerido | opcional | texto no vacío, máx. 300 |
+| `anio_publicacion` | requerido | requerido | opcional | entero 1450–2100 |
+| `precio` | requerido | requerido | opcional | número ≥ 0, máx. 2 decimales, NUMERIC(10,2) |
+| `stock` | opcional (0) | requerido | opcional | entero ≥ 0 |
+| `formato_id` | requerido | requerido | opcional | entero; debe existir en `formatos` |
+| `categoria_id` | requerido | requerido | opcional | entero; debe existir en `categorias` |
+
+Campos desconocidos o `null` → 400. `fecha_creacion`/`fecha_actualizacion`
+las gestiona PostgreSQL (trigger de `05_triggers.sql`). El ISBN no se puede
+cambiar (es la PK). La respuesta de POST/PUT/PATCH es el libro con el mismo
+formato que `GET /books/<isbn>`; DELETE devuelve `{"deleted": true, "isbn": ...}`.
+
+### DELETE
+
+DELETE físico, igual que `sp_libro_eliminar` del monolito. Si el libro ya
+forma parte de un pedido (`pedido_detalle`, `ON DELETE RESTRICT`, migración 07),
+PostgreSQL rechaza el borrado, se hace rollback y se responde
+`409 BOOK_HAS_ORDER_HISTORY`: no se borran líneas de pedido ni se usa
+CASCADE. Otra referencia restrictiva → `409 BOOK_IN_USE`. El esquema no
+tiene una columna de baja lógica para libros y no se agregó ninguna.
+
+Atención (comportamiento heredado del esquema): borrar un libro **sin**
+pedidos elimina en cascada sus autores, géneros, imágenes (filas, no
+archivos en disco), conceptos y, por `libro_concepto`, las clasificaciones
+SOAP de esos conceptos (`soap_module.clasificaciones_cloud`, documentado en
+`sql/soap_module.sql`).
+
+### Caché Redis (cache-aside)
+
+- Claves: `books:<isbn>` (ISBN sin espacios y con `X` en mayúscula, como lo
+  guarda PostgreSQL; los guiones se conservan) y
+  `books:list:<filtros-normalizados>` (`books:list:all`, `books:list:q=dune`).
+  `?q=` se normaliza a minúsculas sin espacios externos; `format` y otros
+  parámetros no forman parte de la clave.
+- HIT: se responde desde Redis. MISS: PostgreSQL → se guarda en Redis con
+  `BOOKS_CACHE_TTL_SECONDS` (60 s por defecto) → se responde. Un `null`
+  (libro inexistente con ISBN válido) también se cachea con el mismo TTL y lo
+  borra la invalidación de un POST.
+- Redis caído en un GET: warning en el log (sin host ni contraseña),
+  PostgreSQL responde normalmente. Tras un fallo, la caché se omite 5 s
+  (`CACHE_COOLDOWN_SECONDS` en `app.py`) para no pagar el connect timeout de
+  Redis en cada petición.
+- Escrituras: validar → PostgreSQL → commit → invalidar `books:<isbn>` y
+  `books:list:*` (SCAN, nunca `KEYS`). Si PostgreSQL falla: rollback y no se
+  invalida nada. Si Redis falla **después** del commit, la escritura se
+  mantiene (no hay rollback), la respuesta trae
+  `X-Cache-Invalidation: failed`, se cuenta `cache_invalidation_failed` y
+  la entrada vieja expira con el TTL.
+- Métricas (en `GET /health?details=true`): `cache_hit`, `cache_miss`,
+  `cache_skipped`, `cache_invalidation`, `cache_invalidation_failed`,
+  `redis_error`.
 
 ## Restricciones de implementación
 

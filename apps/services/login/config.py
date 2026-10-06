@@ -4,6 +4,15 @@ from dataclasses import dataclass
 import os
 
 from dotenv import load_dotenv
+from library_shared.errors import ConfigurationError as SharedConfigurationError
+from library_shared.settings import (
+    CorsSettings,
+    JwtSettings,
+    RedisSettings,
+    load_cors_settings,
+    load_jwt_settings,
+    load_redis_settings,
+)
 
 
 load_dotenv()
@@ -84,3 +93,26 @@ def get_settings() -> Settings:
         email_token_expiration_minutes=_int("EMAIL_TOKEN_EXPIRATION_MINUTES", "60"),
         dev_show_verification_link=_bool("DEV_SHOW_VERIFICATION_LINK", "false"),
     )
+
+
+@dataclass(frozen=True)
+class SecuritySettings:
+    jwt: JwtSettings
+    redis: RedisSettings
+    cors: CorsSettings
+
+
+def get_security_settings() -> SecuritySettings:
+    """
+    JWT/Redis/CORS configuration, read and validated by library_shared
+    (apps/services/shared). JWT_SECRET_KEY and REDIS_URL are mandatory:
+    login cannot issue controllable tokens without them.
+    """
+    try:
+        return SecuritySettings(
+            jwt=load_jwt_settings(),
+            redis=load_redis_settings(),
+            cors=load_cors_settings(),
+        )
+    except SharedConfigurationError as exc:
+        raise ConfigurationError(str(exc)) from exc

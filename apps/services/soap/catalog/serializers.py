@@ -166,3 +166,32 @@ def error_to_xml(code: str, message: str) -> bytes:
     _text(root, "code", code)
     _text(root, "message", message)
     return _to_bytes(root)
+
+
+# --- delete result ----------------------------------------------------------
+
+def book_deleted_to_dict(isbn: str) -> dict[str, Any]:
+    return {"deleted": True, "isbn": isbn}
+
+
+def book_deleted_to_xml(isbn: str) -> bytes:
+    root = ET.Element("deleted")
+    _text(root, "isbn", isbn)
+    _text(root, "deleted", True)
+    return _to_bytes(root)
+
+
+# --- detailed health (GET /health?details=true) ----------------------------
+
+def health_details_to_dict(details: dict[str, Any]) -> dict[str, Any]:
+    return dict(details)
+
+
+def health_details_to_xml(details: dict[str, Any]) -> bytes:
+    root = ET.Element("health")
+    for key in ("status", "service", "database", "redis", "cache"):
+        _text(root, key, details[key])
+    metrics = ET.SubElement(root, "metrics")
+    for name, value in sorted(details["metrics"].items()):
+        _text(metrics, name, value)
+    return _to_bytes(root)

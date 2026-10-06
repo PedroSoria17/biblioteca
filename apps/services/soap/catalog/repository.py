@@ -1,7 +1,18 @@
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any
 
+from psycopg2 import errors as pg_errors
+
+from catalog.errors import (
+    book_already_exists,
+    book_has_order_history,
+    book_in_use,
+    invalid_input,
+    invalid_reference,
+)
+from catalog.validation import MUTABLE_FIELDS
 from db.connection import transaction
 
 
@@ -29,53 +40,59 @@ CLOUD_COMPUTING_CONCEPT_NAMES = (
 )
 
 
-def list_books() -> list[dict[str, Any]]:
+_BOOK_SELECT = """
+    SELECT
+        l.isbn,
+        l.titulo,
+        l.anio_publicacion,
+        l.precio,
+        l.stock,
+        c.nombre AS categoria,
+        f.nombre AS formato
+    FROM libros l
+    JOIN categorias c ON c.categoria_id = l.categoria_id
+    JOIN formatos f ON f.formato_id = l.formato_id
+"""
+
+
+def _escape_like(value: str) -> str:
+    # Treat the search text literally: % and _ are not wildcards for the user.
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
+def list_books(search: str | None = None) -> list[dict[str, Any]]:
+    """
+    Whole catalog, or filtered by a case-insensitive fragment of the title
+    or ISBN (same semantics as fn_libros_listar / RF-06). Ordered by ISBN,
+    as before.
+    """
+    pattern = f"%{_escape_like(search)}%" if search else None
+
     with transaction() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """
-                SELECT
-                    l.isbn,
-                    l.titulo,
-                    l.anio_publicacion,
-                    l.precio,
-                    l.stock,
-                    c.nombre AS categoria,
-                    f.nombre AS formato
-                FROM libros l
-                JOIN categorias c ON c.categoria_id = l.categoria_id
-                JOIN formatos f ON f.formato_id = l.formato_id
+                _BOOK_SELECT
+                + """
+                WHERE %s::text IS NULL OR l.titulo ILIKE %s OR l.isbn ILIKE %s
                 ORDER BY l.isbn;
-                """
+                """,
+                (pattern, pattern, pattern),
             )
             rows = cur.fetchall()
 
     return [_row_to_book(row) for row in rows]
 
 
+def _select_book(cur, isbn: str) -> dict[str, Any] | None:
+    cur.execute(_BOOK_SELECT + " WHERE l.isbn = %s;", (isbn,))
+    row = cur.fetchone()
+    return _row_to_book(row) if row is not None else None
+
+
 def get_book(isbn: str) -> dict[str, Any] | None:
     with transaction() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT
-                    l.isbn,
-                    l.titulo,
-                    l.anio_publicacion,
-                    l.precio,
-                    l.stock,
-                    c.nombre AS categoria,
-                    f.nombre AS formato
-                FROM libros l
-                JOIN categorias c ON c.categoria_id = l.categoria_id
-                JOIN formatos f ON f.formato_id = l.formato_id
-                WHERE l.isbn = %s;
-                """,
-                (isbn,),
-            )
-            row = cur.fetchone()
-
-    return _row_to_book(row) if row is not None else None
+            return _select_book(cur, isbn)
 
 
 def _row_to_book(row) -> dict[str, Any]:
@@ -88,6 +105,97 @@ def _row_to_book(row) -> dict[str, Any]:
         "categoria": row[5],
         "formato": row[6],
     }
+
+
+# ---------------------------------------------------------------------------
+# Writes (POST/PUT/PATCH/DELETE /books). Each runs in ONE transaction: any
+# exception rolls back (db.connection.transaction) and nothing is committed.
+# Values arrive already validated by catalog/validation.py; column names in
+# dynamic SQL come only from the MUTABLE_FIELDS whitelist, never from input.
+# ---------------------------------------------------------------------------
+
+def _map_write_error(exc: Exception):
+    if isinstance(exc, pg_errors.UniqueViolation):
+        return book_already_exists()
+    if isinstance(exc, pg_errors.ForeignKeyViolation):
+        return invalid_reference()
+    if isinstance(exc, (pg_errors.CheckViolation, pg_errors.NotNullViolation)):
+        return invalid_input("The book data violates a database constraint.")
+    return None
+
+
+def _run_write(func):
+    try:
+        return func()
+    except (pg_errors.IntegrityError, pg_errors.DataError) as exc:
+        mapped = _map_write_error(exc)
+        if mapped is None:
+            raise
+        raise mapped from exc
+
+
+def create_book(isbn: str, values: dict[str, Any]) -> dict[str, Any]:
+    columns = ["isbn", *(f for f in MUTABLE_FIELDS if f in values)]
+    params = [isbn, *(values[f] for f in columns[1:])]
+    sql = f"INSERT INTO libros ({', '.join(columns)}) VALUES ({', '.join(['%s'] * len(columns))});"
+
+    def run():
+        with transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, params)
+                return _select_book(cur, isbn)
+
+    return _run_write(run)
+
+
+def update_book(isbn: str, values: dict[str, Any]) -> dict[str, Any] | None:
+    """
+    Updates ONLY the given columns (PATCH) or all of them (PUT). Returns
+    None when the ISBN does not exist. fecha_actualizacion is maintained by
+    trg_libros_set_fecha_actualizacion (05_triggers.sql).
+    """
+    columns = [f for f in MUTABLE_FIELDS if f in values]
+    assignments = ", ".join(f"{column} = %s" for column in columns)
+    sql = f"UPDATE libros SET {assignments} WHERE isbn = %s;"
+
+    def run():
+        with transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql, [*(values[c] for c in columns), isbn])
+                if cur.rowcount == 0:
+                    return None
+                return _select_book(cur, isbn)
+
+    return _run_write(run)
+
+
+ORDER_HISTORY_CONSTRAINT = "fk_pedido_detalle_libro"
+
+
+def delete_book(isbn: str) -> bool:
+    """
+    Physical DELETE, the same operation the monolith performs
+    (sp_libro_eliminar). Returns False when the ISBN does not exist.
+
+    If the book was sold (pedido_detalle, ON DELETE RESTRICT, migration 07)
+    PostgreSQL rejects the DELETE and the transaction is rolled back: no
+    order line is touched, and the caller gets a 409 instead of a 500.
+    """
+    try:
+        with transaction() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM libros WHERE isbn = %s;", (isbn,))
+                return cur.rowcount > 0
+    except pg_errors.ForeignKeyViolation as exc:
+        constraint = getattr(exc.diag, "constraint_name", None)
+        if constraint == ORDER_HISTORY_CONSTRAINT:
+            raise book_has_order_history() from exc
+        raise book_in_use() from exc
+
+
+def to_cacheable(book: dict[str, Any]) -> dict[str, Any]:
+    """JSON-safe copy (Decimal -> str) that serializes exactly like the original."""
+    return {k: (str(v) if isinstance(v, Decimal) else v) for k, v in book.items()}
 
 
 def list_cloud_concepts() -> list[dict[str, Any]]:

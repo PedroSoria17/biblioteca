@@ -126,7 +126,18 @@ def login_user(payload: dict) -> dict:
     if not _check_password(password, user["password_hash"]):
         raise invalid_credentials()
 
-    return {"id": user["usuario_id"], "email": user["email"]}
+    return {"id": user["usuario_id"], "email": user["email"], "role_id": user["role_id"]}
+
+
+def get_active_user(usuario_id: int) -> dict | None:
+    """Current state of a user (role_id, activo) straight from PostgreSQL."""
+    with open_connection() as conn:
+        user = repo.get_user_by_id(conn, usuario_id)
+
+    if user is None or not user["activo"]:
+        return None
+
+    return {"id": user["usuario_id"], "email": user["email"], "role_id": user["role_id"]}
 
 
 def verify_email(token: str) -> dict:

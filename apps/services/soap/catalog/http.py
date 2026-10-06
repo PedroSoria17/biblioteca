@@ -5,6 +5,7 @@ import logging
 from typing import Any, Callable
 
 from flask import Response, request
+from library_shared.errors import AuthError
 
 from catalog.errors import CatalogError, internal_error
 from catalog.format import get_response_format
@@ -26,6 +27,23 @@ def error_response(error: CatalogError, response_format: str) -> Response:
         return respond("json", error.http_status, error_to_dict(error.code, error.message), b"")
 
     return respond("xml", error.http_status, None, error_to_xml(error.code, error.message))
+
+
+def auth_error_response(error: AuthError) -> Response:
+    """
+    Renderer passed to library_shared.flask_auth.init_auth: 401/403/503 from
+    the JWT checks use the same <error><code/><message/> shape as every
+    other catalog error.
+    """
+    try:
+        response_format = get_response_format(request)
+    except CatalogError:
+        response_format = "xml"
+
+    response = error_response(CatalogError(error.code, error.message, error.http_status), response_format)
+    if error.http_status == 401:
+        response.headers["WWW-Authenticate"] = 'Bearer realm="library"'
+    return response
 
 
 # BuildResponse: (response_format: str) -> tuple[status, json_payload, xml_bytes]

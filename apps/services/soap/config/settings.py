@@ -2,6 +2,16 @@ from dataclasses import dataclass
 import os
 
 from dotenv import load_dotenv
+from library_shared.errors import ConfigurationError as SharedConfigurationError
+from library_shared.settings import (
+    CorsSettings,
+    JwtSettings,
+    RedisSettings,
+    load_books_cache_ttl,
+    load_cors_settings,
+    load_jwt_settings,
+    load_redis_settings,
+)
 
 
 load_dotenv()
@@ -59,3 +69,30 @@ def get_settings() -> Settings:
         # falls back to "<library_soap_service>/uploads/libros".
         uploads_libros_dir=os.getenv("UPLOADS_LIBROS_DIR") or None,
     )
+
+
+@dataclass(frozen=True)
+class SecuritySettings:
+    jwt: JwtSettings
+    redis: RedisSettings
+    cors: CorsSettings
+    books_cache_ttl_seconds: int
+
+
+def get_security_settings() -> SecuritySettings:
+    """
+    JWT/Redis/CORS/cache configuration, validated by library_shared
+    (apps/services/shared). JWT_SECRET_KEY and REDIS_URL are required:
+    Books cannot authorize write operations without them (revocation lives
+    in Redis). Redis being *unreachable* at runtime is a different matter:
+    public reads keep working from PostgreSQL.
+    """
+    try:
+        return SecuritySettings(
+            jwt=load_jwt_settings(),
+            redis=load_redis_settings(),
+            cors=load_cors_settings(),
+            books_cache_ttl_seconds=load_books_cache_ttl(),
+        )
+    except SharedConfigurationError as exc:
+        raise ConfigurationError(str(exc)) from exc

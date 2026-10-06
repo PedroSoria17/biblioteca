@@ -8,15 +8,30 @@ from psycopg.rows import dict_row
 
 
 def get_user_by_email(conn: psycopg.Connection, email: str) -> dict[str, Any] | None:
+    # role_id comes from data/07_microservices_auth_orders_payments.sql.
     with conn.cursor(row_factory=dict_row) as cur:
         cur.execute(
             """
             SELECT usuario_id, nombre_completo, email, password_hash,
-                   es_administrador, activo
+                   es_administrador, role_id, activo
             FROM usuarios
             WHERE email = %s
             """,
             (email,),
+        )
+        return cur.fetchone()
+
+
+def get_user_by_id(conn: psycopg.Connection, usuario_id: int) -> dict[str, Any] | None:
+    """Used by /refresh to re-read the CURRENT role and active flag."""
+    with conn.cursor(row_factory=dict_row) as cur:
+        cur.execute(
+            """
+            SELECT usuario_id, email, role_id, activo
+            FROM usuarios
+            WHERE usuario_id = %s
+            """,
+            (usuario_id,),
         )
         return cur.fetchone()
 

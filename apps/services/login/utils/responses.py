@@ -6,6 +6,7 @@ from typing import Any, Callable
 from xml.etree import ElementTree as ET
 
 from flask import Response, request
+from library_shared.errors import AuthError, RedisUnavailableError, auth_backend_unavailable
 
 from utils.errors import ServiceError, internal_error, invalid_format
 
@@ -80,6 +81,19 @@ def error_response(error: ServiceError, response_format: str) -> Response:
     return respond(response_format, error.http_status, payload)
 
 
+def auth_error_response(error: AuthError, response_format: str) -> Response:
+    """
+    Same XML/JSON shape as error_response, plus `code` so a client can tell
+    TOKEN_EXPIRED (call /refresh) from TOKEN_REVOKED (log in again) or
+    AUTH_BACKEND_UNAVAILABLE (retry later).
+    """
+    payload = {"success": False, "message": error.message, "code": error.code}
+    response = respond(response_format, error.http_status, payload)
+    if error.http_status == 401:
+        response.headers["WWW-Authenticate"] = 'Bearer realm="library"'
+    return response
+
+
 # BuildResponse: (response_format: str) -> (status, json_serializable_payload)
 BuildResponse = Callable[[str], tuple[int, dict]]
 
@@ -109,6 +123,12 @@ def service_route(build_response: BuildResponse) -> Response:
         return respond(response_format, status, payload)
     except ServiceError as exc:
         return error_response(exc, response_format)
+    except AuthError as exc:
+        return auth_error_response(exc, response_format)
+    except RedisUnavailableError:
+        # Infrastructure failure, never disguised as 401: fail closed with 503.
+        logger.error("Redis unavailable while serving a login endpoint")
+        return auth_error_response(auth_backend_unavailable(), response_format)
     except Exception:
         logger.exception("Unexpected error in login microservice endpoint")
         return error_response(internal_error(), response_format)
