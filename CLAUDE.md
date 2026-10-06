@@ -28,7 +28,10 @@ PostgreSQL, un solo administrador) **siguen vigentes**.
 | `apps/services/soap/` | **Microservicio Books** (REST `/books`, `/books/<isbn>`, ... + SOAP `/soap` + WSDL) | Evolucionará con CRUD, JWT y caché Redis. **No** renombrar ni duplicar. |
 | `apps/services/soap/desktop_client/` | App Tkinter actual | Se ampliará después (login, tokens, CRUDs, semáforos). No reescribir aún. |
 | `apps/services/shared/` | Paquete `library_shared` (JWT, Redis, autorización, CORS) | Base común para todos los servicios. |
-| `apps/services/users/`, `authors/`, `orders/`, `payments/` | Futuros microservicios | Aún no existen. |
+| `apps/services/users/` | Microservicio Users (puerto 5002): CRUD de `usuarios` con Bearer + ADMIN, `/users/me`, JSON | Fase 4. No emite tokens (eso es Login). |
+| `apps/services/authors/` | Microservicio Authors (puerto 5003): CRUD de `autores` y relaciones `libro_autor`; GET públicos, escrituras Bearer + ADMIN, JSON | Fase 4. Solo lee `libros`; nunca los modifica. |
+| `apps/services/orders/` | Microservicio Orders (puerto 5004): pedidos, líneas, estados y stock con transacciones PostgreSQL | Fase 4. No escribe `pagos` ni borra pedidos. |
+| `apps/services/payments/` | Microservicio Payments (puerto 5005): intentos de pago, aprobación/rechazo, reembolsos | Fase 4. Sin DELETE/PUT/PATCH de pagos. |
 | `data/` | Scripts SQL de `library_db` | Migraciones nuevas = archivos nuevos. |
 
 ### Books = `apps/services/soap/`
@@ -59,8 +62,9 @@ técnica y pedir confirmación; nunca hacerlo automáticamente.
 - El código compartido vive en `apps/services/shared/library_shared/` (nombre
   único) y se instala en el venv de cada servicio con
   `pip install -e ../shared`. No usar `sys.path.append` ni copiar código.
-- Pruebas: `python -m pytest` desde la carpeta del servicio (login, shared);
-  `python -m unittest discover -s tests` en soap.
+- Pruebas: `python -m pytest` desde la carpeta del servicio (login, shared,
+  users, authors, orders, payments); `python -m unittest discover -s tests` en soap (con
+  `JWT_SECRET_KEY` y `REDIS_URL` ficticios, ver su README).
 
 ## Reglas de seguridad de esta actividad
 
@@ -129,6 +133,31 @@ técnica y pedir confirmación; nunca hacerlo automáticamente.
    `books:list:*`) con invalidación tras commit, `/health?details=true`, y
    `sql/03_books_crud_grants.sql`. SOAP, WSDL y GET existentes sin cambios.
 4. **Users, Authors, Orders, Payments**: nuevos servicios con la misma base.
+   - **Users (hecho)**: `apps/services/users/`, puerto 5002. Solo escribe
+     `role_id` (el trigger sincroniza `es_administrador`), protege al último
+     ADMIN (409 `LAST_ADMIN_REQUIRED`), no borra usuarios con pedidos
+     (409 `USER_HAS_ORDER_HISTORY`), bcrypt compatible con Login. Sin grants
+     nuevos. Pendiente: revocar tokens vigentes al desactivar/cambiar rol.
+   - **Authors (hecho)**: `apps/services/authors/`, puerto 5003. GET públicos
+     (funcionan con Redis caído; `/health` = `degraded`), escrituras ADMIN.
+     Borrar un autor con libros → 409 `AUTHOR_HAS_BOOKS` (FK RESTRICT); las
+     relaciones se gestionan con `POST/DELETE /authors/<id>/books/<isbn>`.
+     Sin caché ni grants nuevos.
+   - **Orders (hecho)**: `apps/services/orders/`, puerto 5004. Creación
+     atómica (libros `FOR UPDATE` ordenados por ISBN, precio congelado en
+     `pedido_detalle`, total por el trigger de la 07), cancelación
+     `pending → cancelled` devuelve stock una sola vez, invalida la caché
+     de Books tras cambiar stock. Sin DELETE de pedidos. `pending → paid` y
+     `paid → cancelled` quedan para Payments (`services/status.py`).
+   - **Payments (hecho)**: `apps/services/payments/`, puerto 5005. Flujo:
+     intento `pending` (dueño o ADMIN, monto = `pedidos.total`) → ADMIN
+     `approve` (pago `approved` + pedido `paid`) / `reject` → ADMIN `refund`
+     (pago `refunded` + pedido `cancelled` + stock devuelto). Locks:
+     `pedidos` → `pagos` → `libros` por ISBN. Ejecuta solo las transiciones
+     que Orders le delega (prueba de contrato contra
+     `orders/services/status.py`).
+   - Los servicios nuevos no se despliegan uno a uno en la VM: se integran
+     todos con Tkinter y se despliegan juntos al final.
 5. **Tkinter**: login, manejo y renovación de tokens, CRUDs, semáforos de
    disponibilidad.
 6. **Despliegue CentOS 10**: reverse proxy HTTPS, systemd, variables de
